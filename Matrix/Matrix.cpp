@@ -7,6 +7,11 @@
 #define MATRIX_CPP
 #include "Matrix.h"
 #include <iostream>
+#include <stdexcept>  
+#include <limits>  
+
+#define SWAP(x,y) (x^=y),(y^=x),(x^=y)
+using namespace std;
 
 template<typename T>
 Matrix<T>:: Matrix(const std::vector<std::vector<T>>& _matrix) {
@@ -35,9 +40,14 @@ Matrix<T>::Matrix(const Matrix& matrix2) {
 template<typename T>
 Matrix<T>::~Matrix() {}
 
+
+//MATRIX o MATRIX OVERLOADS
 //Addition
 template<typename T>
 Matrix<T> Matrix<T>:: operator+(const Matrix<T>& matrix2){
+	if (matrix2.get_rows() != get_rows() && matrix2.get_cols() != get_cols) {
+		throw invalid_argument("Cannot add matricies");
+	}
 	Matrix results(rows, cols, 0.0);
 
 	for (unsigned i = 0; i < rows; i++) {
@@ -62,9 +72,13 @@ Matrix<T>& Matrix<T>:: operator+=(const Matrix<T>& matrix2) {
 //Subtraction
 template<typename T>
 Matrix<T> Matrix<T>:: operator-(const Matrix<T>& matrix2) {
-	Matrix c(rows, cols, 0.0);
+	if (matrix2.get_rows() != get_rows() && matrix2.get_cols() != get_cols) {
+		throw invalid_argument("Cannot subtract matricies");
+	}
 
-	for (unsigned i = 0i < rows; i++) {
+	Matrix results(rows, cols, 0.0);
+
+	for (unsigned i = 0; i < rows; i++) {
 		for (unsigned j = 0; j < cols; j++) {
 			results(i, j) = this->matrix[i][j] - matrix2(i, j);
 		}
@@ -75,14 +89,19 @@ Matrix<T> Matrix<T>:: operator-(const Matrix<T>& matrix2) {
 //Subtraction and equal
 template<typename T>
 Matrix<T>& Matrix<T>:: operator-=(const Matrix<T>& matrix2) {
+
 	Matrix result = (*this) - matrix2;
 	(*this) = result;
 	return result;
 }
 
-//Multiplication M o M
+//Multiplication
 template<typename T>
 Matrix<T> Matrix<T>:: operator*(const Matrix<T>& matrix2) {
+	if (matrix2.get_rows() != get_cols()) {
+		throw invalid_argument("Cannot multiply matricies");
+	}
+
 	unsigned cols = matrix2.get_cols();
 	Matrix result(rows, matrix2.get_cols(), 0.0);
 
@@ -104,6 +123,8 @@ Matrix<T>& Matrix<T>:: operator*=(const Matrix<T>& matrix2) {
 	return *this;
 }
 
+
+//SCALAR o MATRIX OVERLOADS
 //Scalar Addition
 template<typename T>
 Matrix<T> Matrix<T>:: operator+(const T& scalar) {
@@ -156,7 +177,7 @@ Matrix<T> Matrix<T>:: operator/(const T& scalar) {
 	return result;
 }
 
-//Functions
+//FUNCTIONS
 template<typename T>
 std::vector<T> Matrix<T>::diagonal() {
 	std::vector<T> result(rows, 0.0);
@@ -174,7 +195,7 @@ T& Matrix<T>:: operator()(const unsigned &row, const unsigned &col) {
 }
 
 template<typename T>
-const T& Matrix<T>::operator()(const unsigned& row, const unsigned& col) const {
+const T& Matrix<T>::operator()(const unsigned &row, const unsigned &col) const {
 	return this->matrix[row][col];
 }
 
@@ -198,9 +219,79 @@ void Matrix<T>::printMatrix() const {
 	}
 }
 
+//Returns Reduced Row Echelon Form of matrix.
+template<typename T>
+Matrix<T> Matrix<T>::rref() {
+	Matrix result((*this)); //Copies matrix to result
+	
+	
+	unsigned lead = 0;
+	unsigned rowCount = result.get_rows();
+	unsigned colCount = result.get_cols();
+
+	//RREF
+	while (lead < rowCount) {
+		float d, m;
+
+		for (int r = 0; r < rowCount; r++) {
+			d = result(lead,lead);
+			m = result(r, lead) / d;
+
+			for (int c = 0; c < colCount; c++) {
+				if (r == lead)
+					result(r, c) /= d;
+				else
+					result(r, c) -= result(lead, c)*m;
+			}
+		}
+		lead++;
+	}
+
+	//Changes '-0' to '0'
+	for (unsigned i = 0; i < rowCount; i++) {
+		for (unsigned j = 0; j < colCount; j++) {
+			if (result(i, j) == -0) {
+				result(i, j) = 0;
+			}
+		}
+	}
+
+	return result;
+}
+
+
+template<typename T>
+std::vector<T> Matrix<T>::getRow(unsigned i)const {
+	std::vector<T> aRow;
+	aRow.resize(cols);
+	for (unsigned j = 0; j < cols; j++) {
+		aRow[j] = this->matrix[i][j];
+	}
+	return aRow;
+}
+
+template<typename T>
+void Matrix<T>::replaceRow(unsigned rowNum, const std::vector<T>& newRow) {
+	for (unsigned j = 0; j < cols; j++) {
+		this->matrix[rowNum][j] = newRow[j];
+	}
+}
+
+template<typename T>
+T trace() {
+	if (rows != cols)
+		throw exception("Cannot trace non-square matrix");
+
+	T value = 0;
+	for (unsigned i = 0; i < rows; i++) {
+		value += matrix[i][i];
+	}
+	return trace;
+}
+
+//MAIN FUNCTION
 int main(int argc, char **argv) {
 	//std::vector<std::vector<double>> v4 = ;
-	std::vector<std::vector<double>> v5 = 
 	Matrix<double> mat1({ { 1.0,1.0,1.0 },
 						{ 2.0,2.0,2.0 } });
 	Matrix<double> mat2({ { 1.0,2.0 },
@@ -209,9 +300,21 @@ int main(int argc, char **argv) {
 
 	Matrix<double> mat3= mat1*mat2;
 
-	mat3.printMatrix();
+	//mat3.printMatrix();
 	mat3 += mat3;
-	mat3.printMatrix();
+	//mat3.printMatrix();
+	mat3 = mat3 - 6;
+	mat3 = mat3 * 4;
+	mat3 = mat3 / 2;
+	//mat3.printMatrix();
+
+
+	Matrix<double> mat4 ({ {1,2,-1,-4},
+					{2,3,-1,-11},
+					{-2,0,-3,22} });
+
+	mat4 = mat4.rref();
+	mat4.printMatrix();
 
 	return 0;
 }
